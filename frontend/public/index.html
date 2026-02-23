@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cờ Cá Ngựa Online 🐴</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div class="main-container">
+        
+        <div class="board-section">
+            <canvas id="gameBoard" width="600" height="600"></canvas>
+        </div>
+
+        <div class="controls-section">
+            <h1>Cờ Cá Ngựa 🐴</h1>
+            
+            <h3 id="my-color" style="text-align: center; color: #fff; margin-top: -10px; margin-bottom: 15px; text-shadow: 1px 1px 3px rgba(0,0,0,0.2);">Bạn là: Đang kết nối...</h3>
+            
+            <div class="controls-container">
+                <p id="status-text" style="font-weight: 800; color: #ff6b81; font-size: 1.3rem; margin-top: 0;">Đang chờ người chơi...</p>
+                
+                <div id="mode-selector" style="margin-bottom: 15px; font-size: 1.1rem;">
+                    <label><b>Chế độ chơi: </b></label>
+                    <select id="dice-mode">
+                        <option value="1">1 Xúc Xắc</option>
+                        <!--<option value="2">2 Xúc Xắc</option> -->
+                    </select>
+                </div>
+
+                <div class="dice-wrapper">
+                    <div id="dice-result-1" class="dice-container">🎲</div>
+                    <div id="dice-result-2" class="dice-container" style="display: none;">🎲</div>
+                </div>
+                
+                <button id="roll-btn" disabled>Đổ Xúc Xắc</button>
+            </div>
+
+            <div id="log-area">
+                <div>✨ Đang kết nối tới máy chủ...</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="client.js"></script>
+</body>
+</html>
