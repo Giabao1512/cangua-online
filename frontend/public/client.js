@@ -1,4 +1,9 @@
-const socket = io();
+const socket = io({
+    transports: ['polling', 'websocket'], // Ưu tiên polling để tránh bị ngắt kết nối đột ngột
+    reconnection: true,
+    reconnectionAttempts: 5,
+    reconnectionDelay: 1000
+});
 
 const myColorEl = document.getElementById('my-color');
 const statusText = document.getElementById('status-text');

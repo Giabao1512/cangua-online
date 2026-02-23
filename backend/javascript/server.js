@@ -5,7 +5,13 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server);
+const io = require('socket.io')(server, {
+    cors: {
+        origin: "*",
+    },
+    pingTimeout: 60000, // Chờ 60 giây trước khi đóng kết nối
+    pingInterval: 25000 // Gửi tín hiệu kiểm tra mỗi 25 giây
+});
 
 const publicPath = path.join(__dirname, '../../frontend/public');
 app.use(express.static(publicPath));
