@@ -13,7 +13,7 @@ const io = require('socket.io')(server, {
     pingInterval: 25000 // Gửi tín hiệu kiểm tra mỗi 25 giây
 });
 
-const publicPath = path.join(__dirname, '../../frontend/public');
+const publicPath = path.join(__dirname, 'public');
 app.use(express.static(publicPath));
 
 let players = [];
