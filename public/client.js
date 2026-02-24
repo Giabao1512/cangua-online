@@ -1,4 +1,3 @@
-// Tạo một ID ngẫu nhiên lưu vào bộ nhớ tạm của trình duyệt
 let myPlayerId = localStorage.getItem('playerId');
 if (!myPlayerId) {
     myPlayerId = Math.random().toString(36).substring(2, 15);
@@ -9,7 +8,7 @@ const socket = io({
     transports: ['polling', 'websocket'],
     reconnection: true,
     reconnectionAttempts: 10,
-    query: { playerId: myPlayerId } // Gửi "thẻ căn cước" lên server
+    query: { playerId: myPlayerId }
 });
 
 const myColorEl = document.getElementById('my-color');
@@ -25,7 +24,34 @@ let currentTurn = '';
 let myGameMode = 1;
 let availableMoves = []; 
 let gotAnotherTurn = false; // Biến kiểm tra xem có được đi tiếp không
-const diceFaces = ['⚀', '⚁', '⚂', '⚃', '⚄', '⚅'];
+// Bộ xúc xắc Vector siêu nét, tự động co giãn theo màn hình
+const diceFaces = [
+    // Mặt 1 (Chấm đỏ hồng cute)
+    `<svg viewBox="0 0 100 100" width="1em" height="1em"><rect width="100" height="100" rx="25" fill="#fff" /><circle cx="50" cy="50" r="14" fill="#ff6b81"/></svg>`,
+    // Mặt 2
+    `<svg viewBox="0 0 100 100" width="1em" height="1em"><rect width="100" height="100" rx="25" fill="#fff" /><circle cx="30" cy="30" r="11" fill="#4a4a4a"/><circle cx="70" cy="70" r="11" fill="#4a4a4a"/></svg>`,
+    // Mặt 3
+    `<svg viewBox="0 0 100 100" width="1em" height="1em"><rect width="100" height="100" rx="25" fill="#fff" /><circle cx="25" cy="25" r="10" fill="#4a4a4a"/><circle cx="50" cy="50" r="10" fill="#4a4a4a"/><circle cx="75" cy="75" r="10" fill="#4a4a4a"/></svg>`,
+    // Mặt 4
+    `<svg viewBox="0 0 100 100" width="1em" height="1em"><rect width="100" height="100" rx="25" fill="#fff" /><circle cx="30" cy="30" r="11" fill="#4a4a4a"/><circle cx="70" cy="30" r="11" fill="#4a4a4a"/><circle cx="30" cy="70" r="11" fill="#4a4a4a"/><circle cx="70" cy="70" r="11" fill="#4a4a4a"/></svg>`,
+    // Mặt 5
+    `<svg viewBox="0 0 100 100" width="1em" height="1em"><rect width="100" height="100" rx="25" fill="#fff" /><circle cx="25" cy="25" r="10" fill="#4a4a4a"/><circle cx="75" cy="25" r="10" fill="#4a4a4a"/><circle cx="50" cy="50" r="10" fill="#4a4a4a"/><circle cx="25" cy="75" r="10" fill="#4a4a4a"/><circle cx="75" cy="75" r="10" fill="#4a4a4a"/></svg>`,
+    // Mặt 6
+    `<svg viewBox="0 0 100 100" width="1em" height="1em"><rect width="100" height="100" rx="25" fill="#fff" /><circle cx="30" cy="22" r="10" fill="#4a4a4a"/><circle cx="70" cy="22" r="10" fill="#4a4a4a"/><circle cx="30" cy="50" r="10" fill="#4a4a4a"/><circle cx="70" cy="50" r="10" fill="#4a4a4a"/><circle cx="30" cy="78" r="10" fill="#4a4a4a"/><circle cx="70" cy="78" r="10" fill="#4a4a4a"/></svg>`
+];
+
+// Hàm bật/tắt nút đổ xúc xắc
+function setRollButtonState(isActive) {
+    if (isActive) {
+        rollBtn.disabled = false;
+        rollBtn.style.opacity = '1';
+        rollBtn.style.cursor = 'pointer';
+    } else {
+        rollBtn.disabled = true;
+        rollBtn.style.opacity = '0.5'; // Làm mờ nút đi 50%
+        rollBtn.style.cursor = 'not-allowed'; // Hiện icon cấm click
+    }
+}
 
 socket.on('init', (data) => {
     myColor = data.color;
@@ -41,12 +67,15 @@ socket.on('updateMode', (mode) => {
 
 socket.on('updateTurn', (turnColor) => {
     currentTurn = turnColor;
-    statusText.innerHTML = `Lượt của: <b style="color:${getColorCode(turnColor)}">${turnColor}</b>`;
+    
     if (myColor === currentTurn) {
-        rollBtn.disabled = false;
-        statusText.innerHTML += "<br>(Đến lượt bạn!)";
+        statusText.innerText = "Tới lượt bạn! Hãy đổ xúc xắc 🎲";
+        // MỞ KHÓA NÚT VÌ ĐÃ TỚI LƯỢT
+        setRollButtonState(true); 
     } else {
-        rollBtn.disabled = true;
+        statusText.innerText = `Đang đợi phe ${currentTurn} đi...`;
+        // KHÓA NÚT LẠI NGỒI CHỜ
+        setRollButtonState(false); 
     }
 });
 
@@ -56,11 +85,9 @@ socket.on('diceResult', (data) => {
     if (data.mode === 2) diceResult2.classList.add('rolling');
 
     let rollInterval = setInterval(() => {
-        diceResult1.innerHTML = diceFaces[Math.floor(Math.random() * 6)];
-        diceResult1.style.color = '#ff9a9e';
+        diceResult1.innerHTML = diceFaces[data.dice1 - 1];
         if (data.mode === 2) {
-            diceResult2.innerHTML = diceFaces[Math.floor(Math.random() * 6)];
-            diceResult2.style.color = '#ff9a9e';
+            diceResult2.innerHTML = diceFaces[data.dice2 - 1];
         }
     }, 100);
 
@@ -117,10 +144,16 @@ diceModeSelect.addEventListener('change', (e) => {
 });
 
 rollBtn.addEventListener('click', () => {
-    availableMoves = []; 
-    gotAnotherTurn = false;
+    // Nếu chưa tới lượt hoặc nút đang bị khóa thì không cho bấm
+    if (myColor !== currentTurn || rollBtn.disabled) {
+        return; 
+    }
+    
+    // 1. KHÓA NÚT LẠI NGAY LẬP TỨC ĐỂ CHỐNG SPAM
+    setRollButtonState(false); 
+    
+    // 2. Gửi lệnh đổ xúc xắc lên server
     socket.emit('rollDice');
-    rollBtn.disabled = true; 
 });
 
 // Chuyển lượt hoặc cho đổ tiếp
@@ -128,6 +161,8 @@ function endTurnOrKeep() {
     if (gotAnotherTurn) {
         log('🎲 Bạn được ĐỔ TIẾP do tung được điểm đặc biệt!');
         rollBtn.disabled = false;
+        gotAnotherTurn = false; // Reset lại biến cho lần sau
+        setRollButtonState(true); // Mở khóa nút để đổ tiếp
     } else {
         socket.emit('endTurn');
     }
