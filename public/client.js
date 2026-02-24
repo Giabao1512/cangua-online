@@ -1,8 +1,15 @@
+// Tạo một ID ngẫu nhiên lưu vào bộ nhớ tạm của trình duyệt
+let myPlayerId = localStorage.getItem('playerId');
+if (!myPlayerId) {
+    myPlayerId = Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('playerId', myPlayerId);
+}
+
 const socket = io({
-    transports: ['polling', 'websocket'], // Ưu tiên polling để tránh bị ngắt kết nối đột ngột
+    transports: ['polling', 'websocket'],
     reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000
+    reconnectionAttempts: 10,
+    query: { playerId: myPlayerId } // Gửi "thẻ căn cước" lên server
 });
 
 const myColorEl = document.getElementById('my-color');
@@ -95,7 +102,15 @@ socket.on('diceResult', (data) => {
     }, 800);
 });
 
-socket.on('roomFull', (msg) => { alert(msg); });
+socket.on('roomFull', (msg) => { 
+    Swal.fire({
+        title: 'Phòng đã đầy!',
+        text: msg,
+        icon: 'error',
+        confirmButtonText: 'OK',
+        confirmButtonColor: '#ff6b81'
+    });
+});
 
 diceModeSelect.addEventListener('change', (e) => {
     socket.emit('changeMode', e.target.value);
@@ -376,26 +391,25 @@ function kickEnemy(targetTrackIndex) {
 // =====================================
 canvas.addEventListener('click', (e) => {
     if (currentTurn !== myColor || availableMoves.length === 0) return;
-
     const rect = canvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
+    
+    // TÍNH TỶ LỆ CO GIÃN CỦA CANVAS (Quan trọng cho Responsive)
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    
+    // Áp dụng tỷ lệ vào tọa độ click
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
-    for (const piece of pieces) {
-        if (piece.color !== myColor) continue;
-
+    pieces.filter(p => p.color === myColor).forEach(p => {
         let px, py;
-        if (piece.state === 'BASE') {
-            px = piece.basePos.c * boxSize - (boxSize / 2); py = piece.basePos.r * boxSize - (boxSize / 2);
+        if (p.state === 'BASE') {
+            px = p.basePos.c * boxSize - boxSize/2; py = p.basePos.r * boxSize - boxSize/2;
         } else {
-            px = piece.currentPos.c * boxSize + (boxSize / 2); py = piece.currentPos.r * boxSize + (boxSize / 2);
+            px = p.currentPos.c * boxSize + boxSize/2; py = p.currentPos.r * boxSize + boxSize/2;
         }
-
-        if (Math.sqrt((clickX - px) ** 2 + (clickY - py) ** 2) <= boxSize / 2) {
-            handlePieceClick(piece);
-            break;
-        }
-    }
+        if (Math.sqrt((x-px)**2 + (y-py)**2) < 20) handlePieceClick(p);
+    });
 });
 
 function handlePieceClick(piece) {
@@ -412,7 +426,16 @@ function handlePieceClick(piece) {
     }
     
     if (validDieIndex === -1) {
-        alert('Quân cờ này đang bị cản hoặc không dùng được xúc xắc hiện tại!');
+        Swal.fire({
+    title: 'Khoan đã!',
+    text: 'Nước đi này không hợp lệ, vui lòng chọn quân khác nhé!',
+    icon: 'warning',
+    confirmButtonText: 'OK',
+    confirmButtonColor: '#ff6b81', // Màu nút tone-sur-tone với game
+    customClass: {
+        popup: 'my-custom-popup' // Để mình chỉnh font chữ ở bước sau
+    }
+});
         return;
     }
     
